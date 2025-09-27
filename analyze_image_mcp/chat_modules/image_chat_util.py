@@ -28,16 +28,22 @@ class ImageChatUtil:
             messages=[],
             response_format={"type": "json_object"}
         )
-        modified_prompt = f"""
-        画像からテキストを抽出し、画像の説明を行い、プロンプトに応答してください。
-        次のJSON形式で応答してください。
+        if prompt:
+            modified_prompt = f"Prompt: {prompt}"
+        else:
+            modified_prompt = ""
+        input_data = f"""
+        Extract text from the image, describe the image, and respond to the prompt.
+        Please reply in the following JSON format.
         {{
-            "extracted_text": "抽出したテキスト（テキストがない場合は空文字）",
-            "description": "画像の説明（説明が不要な場合は空文字）",
-            "prompt_response": "プロンプトに対する応答（プロンプトがない場合は空文字）"
+            "extracted_text": "Extracted text (empty string if no text)",
+            "description": "Description of the image (empty string if not needed)",
+            "prompt_response": "Response to the prompt (empty string if no prompt)"
         }}
+        {modified_prompt}
         """
-        completion_request.add_image_message_by_path(CompletionRequest.user_role_name, modified_prompt, image_path)
+
+        completion_request.add_image_message_by_path(CompletionRequest.user_role_name, input_data, image_path)
 
         chat_response: CompletionOutput = await OpenAIClient(openai_props).run_completion_async(completion_request)
         response_dict = json.loads(chat_response.output)

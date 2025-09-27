@@ -13,7 +13,7 @@ mcp = FastMCP("Demo 🚀") #type :ignore
         
 # 画像を分析
 async def analyze_image_mcp(
-    image_path: Annotated[str, Field(description="Path to the image file to analyze")],
+    image_path: Annotated[str, Field(description="Absolute path to the image file to analyze. e.g., /path/to/image.jpg")],
     prompt: Annotated[str, Field(description="Prompt to analyze the image")]
     ) -> Annotated[ImageAnalysisResponse, Field(description="Analysis result of the image")]:
     """
