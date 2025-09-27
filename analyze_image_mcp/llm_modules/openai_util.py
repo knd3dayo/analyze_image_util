@@ -68,6 +68,80 @@ class CompletionRequest(BaseModel):
         self.messages.append({"role": role, "content": content_item})
         logger.debug(f"Image message added: {role}: {image_url}")
 
+    def append_image_to_last_message_by_path(self, role:str, image_path: str) -> None:
+        """
+        Append an image to the last message in the chat history using a local image file path.
+        
+        Args:
+            role (str): The role of the message sender (e.g., 'user', 'assistant').
+            image_path (str): The local file path to the image.
+        """
+        if not image_path:
+            logger.error("Image path must be provided.")
+            return
+        # Convert local image path to data URL
+        with open(image_path, "rb") as image_file:
+            image_data = image_file.read()
+        # Encode the image data to base64
+        if isinstance(image_data, bytes):
+            image_data = base64.b64encode(image_data).decode('utf-8')
+        # Create the image URL in data URL format
+        mime_type = "image/jpeg"  # Assuming JPEG, adjust as necessary
+        image_url = f"data:{mime_type};base64,{image_data}"
+        self.append_image_to_last_message(role, image_url)
+
+    def append_image_to_last_message(self, role:str, image_url: str) -> None:
+        """
+        Append an image to the last message in the chat history if the role matches.
+        
+        Args:
+            role (str): The role of the message sender (e.g., 'user', 'assistant').
+            image_url (str): The URL of the image to append to the last message.
+        """
+        if not self.messages:
+            self.messages.append({"role": role, "content": [{"type": "image_url", "image_url": {"url": image_url}}]})
+            logger.debug("No messages to append to. Added new message.")
+            return
+        
+        last_message = self.messages[-1]
+        if last_message["role"] != role:
+            self.messages.append({"role": role, "content": [{"type": "image_url", "image_url": {"url": image_url}}]})
+            logger.debug(f"Added new message as last message role '{last_message['role']}'")
+            return
+        
+        # Check if the last content is a list and contains an image item
+        if isinstance(last_message["content"], list):
+            last_message["content"].append({"type": "image_url", "image_url": {"url": image_url}})
+            logger.debug(f"Added new image item to last message: {image_url}")
+        else:
+            logger.error("Last message content is not in expected format (list). Cannot append image.")
+
+    def append_text_to_last_message(self, role:str, additional_text: str) -> None:
+        """
+        Append additional text to the last message in the chat history if the role matches.
+        
+        Args:
+            role (str): The role of the message sender (e.g., 'user', 'assistant').
+            additional_text (str): The text to append to the last message.
+        """
+        if not self.messages:
+            self.messages.append({"role": role, "content": [{"type": "text", "text": additional_text}]})
+            logger.debug("No messages to append to. Added new message.")
+            return
+        last_message = self.messages[-1]
+
+        if last_message["role"] != role:
+            self.messages.append({"role": role, "content": [{"type": "text", "text": additional_text}]})
+            logger.debug(f"Added new message as last message role '{last_message['role']}'")
+            return
+
+        # Check if the last content is a list and contains a text item
+        if isinstance(last_message["content"], list):
+            # If no text item found, add a new text item
+            last_message["content"].append({"type": "text", "text": additional_text})
+            logger.debug(f"Added new text item to last message: {additional_text}")
+        else:
+            logger.error("Last message content is not in expected format (list). Cannot append text.")
 
     def add_text_message(self, role: str, content: str) -> None:
         """

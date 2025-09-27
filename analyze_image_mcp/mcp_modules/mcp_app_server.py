@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 import argparse
 from fastmcp import FastMCP
 from pydantic import Field
-from analyze_image_mcp.chat_modules.image_chat_util import ImageChatUtil, ImageAnalysisResponse
+from analyze_image_mcp.chat_modules.image_chat_util import ImageChatUtil, ImageAnalysisResponse, ImageAnalysisResponsePair
 
 mcp = FastMCP("Demo 🚀") #type :ignore
 
@@ -21,6 +21,19 @@ async def analyze_image_mcp(
     """
     response = await ImageChatUtil.generate_image_analysis_response_async(image_path, prompt)
     return response
+
+# 2枚の画像の分析を行う
+async def analyze_two_images_mcp(
+    image_path1: Annotated[str, Field(description="Absolute path to the first image file to analyze. e.g., /path/to/image1.jpg")],
+    image_path2: Annotated[str, Field(description="Absolute path to the second image file to analyze. e.g., /path/to/image2.jpg")],
+    prompt: Annotated[str, Field(description="Prompt to analyze the images")]
+    ) -> Annotated[ImageAnalysisResponsePair, Field(description="Analysis result of the images")]:
+    """
+    This function analyzes two images using the specified prompt and returns the analysis result.
+    """
+    response = await ImageChatUtil.generate_image_pair_analysis_response_async(image_path1, image_path2, prompt)
+    return response
+
 
 # 引数解析用の関数
 def parse_args() -> argparse.Namespace:
@@ -59,6 +72,7 @@ async def main():
     else:
         # デフォルトのツールを登録
         mcp.tool()(analyze_image_mcp)
+        mcp.tool()(analyze_two_images_mcp)
 
     if mode == "stdio":
         await mcp.run_async()

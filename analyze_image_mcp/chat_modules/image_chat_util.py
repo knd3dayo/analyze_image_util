@@ -14,6 +14,17 @@ class ImageAnalysisResponse(BaseModel):
     description: str = Field(default="", description="Description of the image, if any")
     prompt_response: str = Field(default="", description="Response to the prompt, if any")
 
+# 2枚の画像の解析レスポンス
+class ImageAnalysisResponsePair(BaseModel):
+    image1_path: str = Field(description="Path to the first image file")
+    image1_extracted_text: str = Field(default="", description="Extracted text from the first image, if any")
+    image1_description: str = Field(default="", description="Description of the first image, if any")
+    image2_path: str = Field(description="Path to the second image file")
+    image2_extracted_text: str = Field(default="", description="Extracted text from the second image, if any")
+    image2_description: str = Field(default="", description="Description of the second image, if any")
+    prompt: str = Field(description="Prompt for the image analysis")
+    prompt_response: str = Field(default="", description="Response to the prompt, if any")
+
 class ImageChatUtil:
 
     @classmethod
@@ -57,7 +68,7 @@ class ImageChatUtil:
         return image_analysis_response
 
     @classmethod
-    async def generate_image_response_async(cls, path: str, prompt: str) -> CompletionOutput:
+    async def analyze_image_async(cls, path: str, prompt: str) -> CompletionOutput:
         '''
         画像とプロンプトから回答を生成する
         '''
@@ -74,3 +85,59 @@ class ImageChatUtil:
         chat_response: CompletionOutput = await client.run_completion_async(completion_request)
 
         return chat_response
+
+    '''
+    画像2枚とプロンプトから画像解析を行う。各画像のテキスト抽出、各画像の説明、プロンプト応答のCompletionOutputを生成して、ImageAnalysisResponseで返す
+    '''
+    @classmethod
+
+    async def generate_image_pair_analysis_response_async(cls, path1: str, path2: str, prompt: str) -> ImageAnalysisResponsePair:
+
+        openai_props = OpenAIProps.create_from_env()
+
+        client = OpenAIClient(openai_props)
+        completion_request = CompletionRequest(
+            model=openai_props.default_completion_model,
+            messages=[],
+            response_format={"type": "json_object"}
+        )
+        if prompt:
+            modified_prompt = f"Prompt: {prompt}"
+        else:
+            modified_prompt = ""
+        input_data = f"""
+        Extract text from both images, describe both images, and respond to the prompt.
+        Please reply in the following JSON format.
+        {{
+            "image1": {{
+                "extracted_text": "Extracted text from first image (empty string if no text)",
+                "description": "Description of first image (empty string if not needed)"
+            }},
+            "image2": {{
+                "extracted_text": "Extracted text from second image (empty string if no text)",
+                "description": "Description of second image (empty string if not needed)"
+            }},
+            "prompt_response": "Response to the prompt (empty string if no prompt)"
+        }}
+        {modified_prompt}
+        """
+
+        completion_request.append_image_to_last_message_by_path(CompletionRequest.user_role_name, path1)
+        completion_request.append_image_to_last_message_by_path(CompletionRequest.user_role_name, path2)
+        completion_request.append_text_to_last_message(CompletionRequest.user_role_name, input_data)
+
+        chat_response: CompletionOutput = await client.run_completion_async(completion_request)
+        response_dict = json.loads(chat_response.output)
+        image1_dict = response_dict.get("image1", {})
+        image2_dict = response_dict.get("image2", {})
+
+        return ImageAnalysisResponsePair(
+            image1_path=path1,
+            image1_extracted_text=image1_dict.get("extracted_text", ""),
+            image1_description=image1_dict.get("description", ""),
+            image2_path=path2,
+            image2_extracted_text=image2_dict.get("extracted_text", ""),
+            image2_description=image2_dict.get("description", ""),
+            prompt=prompt,
+            prompt_response=response_dict.get("prompt_response", "")
+        )
