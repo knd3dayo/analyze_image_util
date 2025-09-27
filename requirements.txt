@@ -1,0 +1,10 @@
+pandas
+python-dotenv
+pydantic
+
+# For OpenAI
+openai
+tiktoken
+
+# For MCP
+fastmcp
