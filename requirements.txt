@@ -4,7 +4,9 @@ pydantic
 
 # For OpenAI
 openai
-tiktoken
 
 # For MCP
 fastmcp
+
+# For API
+fastapi

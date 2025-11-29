@@ -1,14 +1,16 @@
 
-import os, sys
 import asyncio
-from typing import Annotated, Any
-from dotenv import load_dotenv
+from typing import Annotated
 import argparse
+
+from dotenv import load_dotenv
 from fastmcp import FastMCP
 from pydantic import Field
-from analyze_image_mcp.chat_modules.image_chat_util import ImageChatUtil, ImageAnalysisResponse, ImageAnalysisResponsePair
+from analyze_image_util.llm.llm_client import LLMClient
+from analyze_image_util.llm.llm_config import LLMConfig
+from analyze_image_util.chat.image_chat_util import ImageChatClient, ImageAnalysisResponse, ImageAnalysisResponsePair
 
-mcp = FastMCP("Demo 🚀") #type :ignore
+mcp = FastMCP("Image Analysis MCP Server")
 
         
 # 画像を分析
@@ -19,7 +21,8 @@ async def analyze_image_mcp(
     """
     This function analyzes an image using the specified prompt and returns the analysis result.
     """
-    response = await ImageChatUtil.generate_image_analysis_response_async(image_path, prompt)
+    client = ImageChatClient(LLMClient.create_llm_client(llm_config=LLMConfig()))
+    response = await client.generate_image_analysis_response_async(image_path, prompt)
     return response
 
 # 2枚の画像の分析を行う
@@ -31,7 +34,8 @@ async def analyze_two_images_mcp(
     """
     This function analyzes two images using the specified prompt and returns the analysis result.
     """
-    response = await ImageChatUtil.generate_image_pair_analysis_response_async(image_path1, image_path2, prompt)
+    client = ImageChatClient(LLMClient.create_llm_client(llm_config=LLMConfig()))
+    response = await client.generate_image_pair_analysis_response_async(image_path1, image_path2, prompt)
     return response
 
 

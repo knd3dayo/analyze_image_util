@@ -1,8 +1,9 @@
 import json
 from pydantic import BaseModel, Field
 
-from analyze_image_mcp.llm_modules.openai_util import OpenAIClient, OpenAIProps, CompletionRequest, CompletionOutput
-import analyze_image_mcp.log_modules.log_settings as log_settings
+from analyze_image_util.llm.model import CompletionRequest, CompletionOutput
+from analyze_image_util.llm.llm_client import LLMClient
+import analyze_image_util.log.log_settings as log_settings
 
 logger = log_settings.getLogger(__name__)
 
@@ -25,17 +26,18 @@ class ImageAnalysisResponsePair(BaseModel):
     prompt: str = Field(description="Prompt for the image analysis")
     prompt_response: str = Field(default="", description="Response to the prompt, if any")
 
-class ImageChatUtil:
+class ImageChatClient:
 
-    @classmethod
-    async def generate_image_analysis_response_async(cls, image_path: str, prompt: str) -> ImageAnalysisResponse:
+    def __init__(self, llm_client: LLMClient) -> None:
+        self.llm_client = llm_client
+
+    async def generate_image_analysis_response_async(self, image_path: str, prompt: str) -> ImageAnalysisResponse:
         '''
         画像解析を行う。テキスト抽出、画像説明、プロンプト応答のCompletionOutputを生成して、ImageAnalysisResponseで返す
         '''
-        openai_props = OpenAIProps.create_from_env()
 
         completion_request = CompletionRequest(
-            model=openai_props.default_completion_model,
+            model=self.llm_client.llm_config.completion_model,
             messages=[],
             response_format={"type": "json_object"}
         )
@@ -53,10 +55,11 @@ class ImageChatUtil:
         }}
         {modified_prompt}
         """
+        self.llm_client.completion_request = completion_request
 
-        completion_request.add_image_message_by_path(CompletionRequest.user_role_name, input_data, image_path)
+        self.llm_client.add_image_message_by_path(CompletionRequest.user_role_name, input_data, image_path)
 
-        chat_response: CompletionOutput = await OpenAIClient(openai_props).run_completion_async(completion_request)
+        chat_response: CompletionOutput = await self.llm_client.chat_completion()
         response_dict = json.loads(chat_response.output)
         image_analysis_response = ImageAnalysisResponse(
             image_path=image_path,
@@ -67,37 +70,27 @@ class ImageChatUtil:
         )
         return image_analysis_response
 
-    @classmethod
-    async def analyze_image_async(cls, path: str, prompt: str) -> CompletionOutput:
+    async def analyze_image_async(self, path: str, prompt: str) -> CompletionOutput:
         '''
         画像とプロンプトから回答を生成する
         '''
-        openai_props = OpenAIProps.create_from_env()
-
-        client = OpenAIClient(openai_props)
-
         completion_request = CompletionRequest(
-            model=openai_props.default_completion_model,
+            model=self.llm_client.llm_config.completion_model,
             messages=[]
         )
-        completion_request.add_image_message_by_path(CompletionRequest.user_role_name, prompt, path)
+        self.llm_client.add_image_message_by_path(CompletionRequest.user_role_name, prompt, path)
 
-        chat_response: CompletionOutput = await client.run_completion_async(completion_request)
+        chat_response: CompletionOutput = await self.llm_client.chat_completion()
 
         return chat_response
 
     '''
     画像2枚とプロンプトから画像解析を行う。各画像のテキスト抽出、各画像の説明、プロンプト応答のCompletionOutputを生成して、ImageAnalysisResponseで返す
     '''
-    @classmethod
+    async def generate_image_pair_analysis_response_async(self, path1: str, path2: str, prompt: str) -> ImageAnalysisResponsePair:
 
-    async def generate_image_pair_analysis_response_async(cls, path1: str, path2: str, prompt: str) -> ImageAnalysisResponsePair:
-
-        openai_props = OpenAIProps.create_from_env()
-
-        client = OpenAIClient(openai_props)
         completion_request = CompletionRequest(
-            model=openai_props.default_completion_model,
+            model=self.llm_client.llm_config.completion_model,
             messages=[],
             response_format={"type": "json_object"}
         )
@@ -122,11 +115,11 @@ class ImageChatUtil:
         {modified_prompt}
         """
 
-        completion_request.append_image_to_last_message_by_path(CompletionRequest.user_role_name, path1)
-        completion_request.append_image_to_last_message_by_path(CompletionRequest.user_role_name, path2)
-        completion_request.append_text_to_last_message(CompletionRequest.user_role_name, input_data)
+        self.llm_client.append_image_to_last_message_by_path(CompletionRequest.user_role_name, path1)
+        self.llm_client.append_image_to_last_message_by_path(CompletionRequest.user_role_name, path2)
+        self.llm_client.append_text_to_last_message(CompletionRequest.user_role_name, input_data)
 
-        chat_response: CompletionOutput = await client.run_completion_async(completion_request)
+        chat_response: CompletionOutput = await self.llm_client.chat_completion()
         response_dict = json.loads(chat_response.output)
         image1_dict = response_dict.get("image1", {})
         image2_dict = response_dict.get("image2", {})
