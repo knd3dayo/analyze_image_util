@@ -6,9 +6,9 @@ import argparse
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 from pydantic import Field
-from analyze_image_util.llm.llm_client import LLMClient
-from analyze_image_util.llm.llm_config import LLMConfig
 from analyze_image_util.chat.image_chat_util import ImageChatClient, ImageAnalysisResponse, ImageAnalysisResponsePair
+from ai_chat_util.llm.llm_config import LLMConfig
+from ai_chat_util.llm.llm_client import LLMClient
 
 mcp = FastMCP("Image Analysis MCP Server")
 
@@ -22,7 +22,7 @@ async def analyze_image_mcp(
     This function analyzes an image using the specified prompt and returns the analysis result.
     """
     client = ImageChatClient(LLMClient.create_llm_client(llm_config=LLMConfig()))
-    response = await client.generate_image_analysis_response_async(image_path, prompt)
+    response = await client.analyze_images_async(image_path, prompt)
     return response
 
 # 2枚の画像の分析を行う
@@ -35,9 +35,22 @@ async def analyze_two_images_mcp(
     This function analyzes two images using the specified prompt and returns the analysis result.
     """
     client = ImageChatClient(LLMClient.create_llm_client(llm_config=LLMConfig()))
-    response = await client.generate_image_pair_analysis_response_async(image_path1, image_path2, prompt)
+    response = await client.analyze_two_images_async(image_path1, image_path2, prompt)
     return response
 
+# 画像グループ1と画像グループ2の分析を行う
+async def analyze_image_groups_mcp(
+    image_group1: Annotated[list[str], Field(description="List of absolute paths to the first group of image files to analyze.")],
+    image_group2: Annotated[list[str], Field(description="List of absolute paths to the second group of image files to analyze.")],
+    prompt: Annotated[str, Field(description="Prompt to analyze the image groups")]
+    ) -> Annotated[ImageAnalysisResponsePair, Field(description="Analysis result of the image groups")]:
+    """
+    This function analyzes two groups of images using the specified prompt and returns the analysis result.
+    """
+    client = ImageChatClient(LLMClient.create_llm_client(llm_config=LLMConfig()))
+    # ここでは、各グループの最初の画像のみを使用して分析を行う例を示す
+    response = await client.analyze_two_images_async(image_group1[0], image_group2[0], prompt)
+    return response
 
 # 引数解析用の関数
 def parse_args() -> argparse.Namespace:
@@ -77,6 +90,7 @@ async def main():
         # デフォルトのツールを登録
         mcp.tool()(analyze_image_mcp)
         mcp.tool()(analyze_two_images_mcp)
+        mcp.tool()(analyze_image_groups_mcp)
 
     if mode == "stdio":
         await mcp.run_async()

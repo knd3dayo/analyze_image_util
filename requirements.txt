@@ -2,11 +2,14 @@ pandas
 python-dotenv
 pydantic
 
+# PDF processing
+pdf2image
+
 # For OpenAI
 openai
 
 # For MCP
-fastmcp
+fastmcp==2.12.4
 
 # For API
 fastapi

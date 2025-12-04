@@ -13,8 +13,8 @@
         "analyze_image_mcp.mcp_modules.mcp_app_server"
       ],
       "env": {
+        "LLM_PROVIDER": "openai",
         "OPENAI_API_KEY": "sk-****************",
-        "AZURE_OPENAI": "false",
         "OPENAI_COMPLETION_MODEL": "gpt-4o-mini",
         "OPENAI_EMBEDDING_MODEL": "text-embedding-3-small"
       }
